@@ -3,34 +3,37 @@
 //////////////////////////////////////////////////////////////////////////
 
 // express
-var express = require('express');
+var express = require("express");
 var app = express();
 
 // socket.io
-var http = require('http').Server(app);
-var io = require('socket.io')(http);
+var http = require("http").Server(app);
+var io = require("socket.io")(http);
 
 // lodash
-var lodash = require('lodash');
+var lodash = require("lodash");
 
 // request logging
-var morgan = require('morgan');
-app.use(morgan('short'));
+var morgan = require("morgan");
+app.use(morgan("short"));
 
 // turn off unnecessary header
-app.disable('x-powered-by');
+app.disable("x-powered-by");
 
 // turn on strict routing
-app.enable('strict routing');
+app.enable("strict routing");
 
 // use the X-Forwarded-* headers
-app.enable('trust proxy');
+app.enable("trust proxy");
 
 // add CORS headers
-app.use(function(req, res, next) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-  res.setHeader('Access-Control-Allow-Credentials', true);
+app.use(function (req, res, next) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, OPTIONS, PUT, PATCH, DELETE"
+  );
+  res.setHeader("Access-Control-Allow-Credentials", true);
   next();
 });
 
@@ -48,7 +51,7 @@ app.use(function(req, res, next) {
 //   ownerId: '3d16d961f67e9792',                                                           // id of the session owner (if any)
 //   state: 'playing' | 'paused',                                                           // whether the video is playing or paused
 //   userIds: ['3d16d961f67e9792', ...],                                                    // ids of the users in the session
-//   videoId: 123                                                                           // Netflix id the video
+//   videoKeyId: 123                                                                           // Netflix id the video
 // }
 var sessions = {};
 
@@ -64,8 +67,8 @@ var users = {};
 
 // generate a random ID with 64 bits of entropy
 function makeId() {
-  var result = '';
-  var hexChars = '0123456789abcdef';
+  var result = "";
+  var hexChars = "0123456789abcdef";
   for (var i = 0; i < 16; i += 1) {
     result += hexChars[Math.floor(Math.random() * 16)];
   }
@@ -77,20 +80,20 @@ function makeId() {
 //////////////////////////////////////////////////////////////////////////
 
 // health check
-app.get('/', function(req, res) {
-  res.setHeader('Content-Type', 'text/plain');
-  res.send('OK');
+app.get("/", function (req, res) {
+  res.setHeader("Content-Type", "text/plain");
+  res.send("OK");
 });
 
 // number of sessions
-app.get('/number-of-sessions', function(req, res) {
-  res.setHeader('Content-Type', 'text/plain');
+app.get("/number-of-sessions", function (req, res) {
+  res.setHeader("Content-Type", "text/plain");
   res.send(String(Object.keys(sessions).length));
 });
 
 // number of users
-app.get('/number-of-users', function(req, res) {
-  res.setHeader('Content-Type', 'text/plain');
+app.get("/number-of-users", function (req, res) {
+  res.setHeader("Content-Type", "text/plain");
   res.send(String(Object.keys(users).length));
 });
 
@@ -99,27 +102,32 @@ app.get('/number-of-users', function(req, res) {
 //////////////////////////////////////////////////////////////////////////
 
 function validateId(id) {
-  return typeof id === 'string' && id.length === 16;
+  return typeof id === "string" && id.length === 16;
 }
 
 function validateLastKnownTime(lastKnownTime) {
-  return typeof lastKnownTime === 'number' &&
+  console.log(typeof lastKnownTime);
+  return (
+    typeof lastKnownTime === "number" &&
     lastKnownTime % 1 === 0 &&
-    lastKnownTime >= 0;
+    lastKnownTime >= 0
+  );
 }
 
 function validateTimestamp(timestamp) {
-  return typeof timestamp === 'number' &&
-    timestamp % 1 === 0 &&
-    timestamp >= 0;
+  return typeof timestamp === "number" && timestamp % 1 === 0 && timestamp >= 0;
 }
 
 function validateBoolean(boolean) {
-  return typeof boolean === 'boolean';
+  return typeof boolean === "boolean";
 }
 
 function validateMessages(messages) {
-  if (typeof messages !== 'object' || messages === null || typeof messages.length !== 'number') {
+  if (
+    typeof messages !== "object" ||
+    messages === null ||
+    typeof messages.length !== "number"
+  ) {
     return false;
   }
   for (var i in messages) {
@@ -128,10 +136,15 @@ function validateMessages(messages) {
       if (isNaN(i)) {
         return false;
       }
-      if (typeof i !== 'number' || i % 1 !== 0 || i < 0 || i >= messages.length) {
+      if (
+        typeof i !== "number" ||
+        i % 1 !== 0 ||
+        i < 0 ||
+        i >= messages.length
+      ) {
         return false;
       }
-      if (typeof messages[i] !== 'object' || messages[i] === null) {
+      if (typeof messages[i] !== "object" || messages[i] === null) {
         return false;
       }
       if (!validateMessageBody(messages[i].body)) {
@@ -155,26 +168,36 @@ function validateMessages(messages) {
 }
 
 function validateState(state) {
-  return typeof state === 'string' && (state === 'playing' || state === 'paused');
+  return (
+    typeof state === "string" && (state === "playing" || state === "paused")
+  );
 }
 
-function validateVideoId(videoId) {
-  return typeof videoId === 'number' && videoId % 1 === 0 && videoId >= 0;
+function validateVideoKeyId(videoKeyId) {
+  console.log("validateVideoKey", videoKeyId);
+  if (
+    typeof videoKeyId !== "string" ||
+    videoKeyId.indexOf("/library/metadata/") === -1
+  )
+    return false;
+  const metadataNumber = videoKeyId.split("/").slice(-1).pop();
+  console.log("metadataNumber", metadataNumber);
+  return !isNaN(parseInt(metadataNumber));
 }
 
 function validateMessageBody(body) {
-  return typeof body === 'string' && body.replace(/^\s+|\s+$/g, '') !== '';
+  return typeof body === "string" && body.replace(/^\s+|\s+$/g, "") !== "";
 }
 
 function padIntegerWithZeros(x, minWidth) {
   var numStr = String(x);
   while (numStr.length < minWidth) {
-    numStr = '0' + numStr;
+    numStr = "0" + numStr;
   }
   return numStr;
 }
 
-io.on('connection', function(socket) {
+io.on("connection", function (socket) {
   var userId = makeId();
   while (users.hasOwnProperty(userId)) {
     userId = makeId();
@@ -183,14 +206,14 @@ io.on('connection', function(socket) {
     id: userId,
     sessionId: null,
     socket: socket,
-    typing: false
+    typing: false,
   };
-  socket.emit('userId', userId);
-  console.log('User ' + userId + ' connected.');
+  socket.emit("userId", userId);
+  console.log("User " + userId + " connected.");
 
   // precondition: sessionId is the id of a session
   // precondition: notToThisUserId is the id of a user, or null
-  var broadcastPresence = function(sessionId, notToThisUserId) {
+  var broadcastPresence = function (sessionId, notToThisUserId) {
     var anyoneTyping = false;
     for (var i = 0; i < sessions[sessionId].userIds.length; i += 1) {
       if (users[sessions[sessionId].userIds[i]].typing) {
@@ -199,11 +222,11 @@ io.on('connection', function(socket) {
       }
     }
 
-    lodash.forEach(sessions[sessionId].userIds, function(id) {
+    lodash.forEach(sessions[sessionId].userIds, function (id) {
       if (id !== notToThisUserId) {
-        console.log('Sending presence to user ' + id + '.');
-        users[id].socket.emit('setPresence', {
-          anyoneTyping: anyoneTyping
+        console.log("Sending presence to user " + id + ".");
+        users[id].socket.emit("setPresence", {
+          anyoneTyping: anyoneTyping,
         });
       }
     });
@@ -212,29 +235,29 @@ io.on('connection', function(socket) {
   // precondition: user userId is in a session
   // precondition: body is a string
   // precondition: isSystemMessage is a boolean
-  var sendMessage = function(body, isSystemMessage) {
+  var sendMessage = function (body, isSystemMessage) {
     var message = {
       body: body,
       isSystemMessage: isSystemMessage,
       timestamp: new Date(),
-      userId: userId
+      userId: userId,
     };
     sessions[users[userId].sessionId].messages.push(message);
 
-    lodash.forEach(sessions[users[userId].sessionId].userIds, function(id) {
-      console.log('Sending message to user ' + id + '.');
-      users[id].socket.emit('sendMessage', {
+    lodash.forEach(sessions[users[userId].sessionId].userIds, function (id) {
+      console.log("Sending message to user " + id + ".");
+      users[id].socket.emit("sendMessage", {
         body: message.body,
         isSystemMessage: isSystemMessage,
         timestamp: message.timestamp.getTime(),
-        userId: message.userId
+        userId: message.userId,
       });
     });
   };
 
   // precondition: user userId is in a session
-  var leaveSession = function(broadcast) {
-    sendMessage('left', true);
+  var leaveSession = function (broadcast) {
+    sendMessage("left", true);
 
     var sessionId = users[userId].sessionId;
     lodash.pull(sessions[sessionId].userIds, userId);
@@ -242,7 +265,11 @@ io.on('connection', function(socket) {
 
     if (sessions[sessionId].userIds.length === 0) {
       delete sessions[sessionId];
-      console.log('Session ' + sessionId + ' was deleted because there were no more users in it.');
+      console.log(
+        "Session " +
+          sessionId +
+          " was deleted because there were no more users in it."
+      );
     } else {
       if (broadcast) {
         broadcastPresence(sessionId, null);
@@ -250,58 +277,114 @@ io.on('connection', function(socket) {
     }
   };
 
-  socket.on('reboot', function(data, fn) {
+  socket.on("reboot", function (data, fn) {
     if (!users.hasOwnProperty(userId)) {
-      fn({ errorMessage: 'Disconnected.' });
-      console.log('The socket received a message after it was disconnected.');
+      fn({ errorMessage: "Disconnected." });
+      console.log("The socket received a message after it was disconnected.");
       return;
     }
 
     if (!validateId(data.sessionId)) {
-      fn({ errorMessage: 'Invalid session ID.' });
-      console.log('User ' + userId + ' attempted to reboot invalid session ' + JSON.stringify(data.sessionId) + '.');
+      fn({ errorMessage: "Invalid session ID." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to reboot invalid session " +
+          JSON.stringify(data.sessionId) +
+          "."
+      );
       return;
     }
 
     if (!validateLastKnownTime(data.lastKnownTime)) {
-      fn({ errorMessage: 'Invalid lastKnownTime.' });
-      console.log('User ' + userId + ' attempted to reboot session ' + data.sessionId + ' with invalid lastKnownTime ' + JSON.stringify(data.lastKnownTime) + '.');
+      fn({ errorMessage: "Invalid lastKnownTime." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to reboot session " +
+          data.sessionId +
+          " with invalid lastKnownTime " +
+          JSON.stringify(data.lastKnownTime) +
+          "."
+      );
       return;
     }
 
     if (!validateTimestamp(data.lastKnownTimeUpdatedAt)) {
-      fn({ errorMessage: 'Invalid lastKnownTimeUpdatedAt.' });
-      console.log('User ' + userId + ' attempted to reboot session ' + data.sessionId + ' with invalid lastKnownTimeUpdatedAt ' + JSON.stringify(data.lastKnownTimeUpdatedAt) + '.');
+      fn({ errorMessage: "Invalid lastKnownTimeUpdatedAt." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to reboot session " +
+          data.sessionId +
+          " with invalid lastKnownTimeUpdatedAt " +
+          JSON.stringify(data.lastKnownTimeUpdatedAt) +
+          "."
+      );
       return;
     }
 
     if (!validateMessages(data.messages)) {
-      fn({ errorMessage: 'Invalid messages.' });
-      console.log('User ' + userId + ' attempted to reboot session with invalid messages ' + JSON.stringify(data.messages) + '.');
+      fn({ errorMessage: "Invalid messages." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to reboot session with invalid messages " +
+          JSON.stringify(data.messages) +
+          "."
+      );
       return;
     }
 
     if (data.ownerId !== null && !validateId(data.ownerId)) {
-      fn({ errorMessage: 'Invalid ownerId.' });
-      console.log('User ' + userId + ' attempted to reboot invalid ownerId ' + JSON.stringify(data.ownerId) + '.');
+      fn({ errorMessage: "Invalid ownerId." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to reboot invalid ownerId " +
+          JSON.stringify(data.ownerId) +
+          "."
+      );
       return;
     }
 
     if (!validateState(data.state)) {
-      fn({ errorMessage: 'Invalid state.' });
-      console.log('User ' + userId + ' attempted to reboot session ' + data.sessionId + ' with invalid state ' + JSON.stringify(data.state) + '.');
+      fn({ errorMessage: "Invalid state." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to reboot session " +
+          data.sessionId +
+          " with invalid state " +
+          JSON.stringify(data.state) +
+          "."
+      );
       return;
     }
 
     if (!validateId(data.userId)) {
-      fn({ errorMessage: 'Invalid userId.' });
-      console.log('User ' + userId + ' attempted to reboot session ' + data.sessionId + ' with invalid userId ' + JSON.stringify(data.userId) + '.');
+      fn({ errorMessage: "Invalid userId." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to reboot session " +
+          data.sessionId +
+          " with invalid userId " +
+          JSON.stringify(data.userId) +
+          "."
+      );
       return;
     }
 
-    if (!validateVideoId(data.videoId)) {
-      fn({ errorMessage: 'Invalid video ID.' });
-      console.log('User ' + userId + ' attempted to reboot session with invalid video ' + JSON.stringify(data.videoId) + '.');
+    if (!validateVideoKeyId(data.videoKeyId)) {
+      fn({ errorMessage: "Invalid video ID." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to reboot session with invalid video " +
+          JSON.stringify(data.videoKeyId) +
+          "."
+      );
       return;
     }
 
@@ -317,53 +400,89 @@ io.on('connection', function(socket) {
     if (sessions.hasOwnProperty(data.sessionId)) {
       sessions[data.sessionId].userIds.push(userId);
       users[userId].sessionId = data.sessionId;
-      console.log('User ' + userId + ' reconnected and rejoined session ' + users[userId].sessionId + '.');
+      console.log(
+        "User " +
+          userId +
+          " reconnected and rejoined session " +
+          users[userId].sessionId +
+          "."
+      );
     } else {
       var session = {
         id: data.sessionId,
         lastKnownTime: data.lastKnownTime,
         lastKnownTimeUpdatedAt: new Date(data.lastKnownTimeUpdatedAt),
-        messages: lodash.map(data.messages, function(message) { return {
-          userId: message.userId,
-          body: message.body,
-          isSystemMessage: message.isSystemMessage,
-          timestamp: new Date(message.timestamp)
-        }; }),
+        messages: lodash.map(data.messages, function (message) {
+          return {
+            userId: message.userId,
+            body: message.body,
+            isSystemMessage: message.isSystemMessage,
+            timestamp: new Date(message.timestamp),
+          };
+        }),
         ownerId: data.ownerId,
         state: data.state,
-        videoId: data.videoId,
-        userIds: [userId]
+        videoKeyId: data.videoKeyId,
+        userIds: [userId],
       };
       sessions[session.id] = session;
       users[userId].sessionId = data.sessionId;
-      console.log('User ' + userId + ' rebooted session ' + users[userId].sessionId + ' with video ' + JSON.stringify(data.videoId) + ', time ' + JSON.stringify(data.lastKnownTime) + ', and state ' + data.state + ' for epoch ' + JSON.stringify(data.lastKnownTimeUpdatedAt) + '.');
+      console.log(
+        "User " +
+          userId +
+          " rebooted session " +
+          users[userId].sessionId +
+          " with video " +
+          JSON.stringify(data.videoKeyId) +
+          ", time " +
+          JSON.stringify(data.lastKnownTime) +
+          ", and state " +
+          data.state +
+          " for epoch " +
+          JSON.stringify(data.lastKnownTimeUpdatedAt) +
+          "."
+      );
     }
 
     broadcastPresence(data.sessionId, null);
 
     fn({
       lastKnownTime: sessions[data.sessionId].lastKnownTime,
-      lastKnownTimeUpdatedAt: sessions[data.sessionId].lastKnownTimeUpdatedAt.getTime(),
-      state: sessions[data.sessionId].state
+      lastKnownTimeUpdatedAt: sessions[
+        data.sessionId
+      ].lastKnownTimeUpdatedAt.getTime(),
+      state: sessions[data.sessionId].state,
     });
   });
 
-  socket.on('createSession', function(data, fn) {
+  socket.on("createSession", function (data, fn) {
     if (!users.hasOwnProperty(userId)) {
-      fn({ errorMessage: 'Disconnected.' });
-      console.log('The socket received a message after it was disconnected.');
+      fn({ errorMessage: "Disconnected." });
+      console.log("The socket received a message after it was disconnected.");
       return;
     }
 
     if (!validateBoolean(data.controlLock)) {
-      fn({ errorMessage: 'Invalid controlLock.' });
-      console.log('User ' + userId + ' attempted to create session with invalid controlLock ' + JSON.stringify(data.controlLock) + '.');
+      fn({ errorMessage: "Invalid controlLock." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to create session with invalid controlLock " +
+          JSON.stringify(data.controlLock) +
+          "."
+      );
       return;
     }
 
-    if (!validateVideoId(data.videoId)) {
-      fn({ errorMessage: 'Invalid video ID.' });
-      console.log('User ' + userId + ' attempted to create session with invalid video ' + JSON.stringify(data.videoId) + '.');
+    if (!validateVideoKeyId(data.videoKeyId)) {
+      fn({ errorMessage: "Invalid video ID." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to create session with invalid video " +
+          JSON.stringify(data.videoKeyId) +
+          "."
+      );
       return;
     }
 
@@ -378,82 +497,121 @@ io.on('connection', function(socket) {
       lastKnownTimeUpdatedAt: now,
       messages: [],
       ownerId: data.controlLock ? userId : null,
-      state: 'paused',
+      state: "paused",
       userIds: [userId],
-      videoId: data.videoId
+      videoKeyId: data.videoKeyId,
     };
     users[userId].sessionId = sessionId;
     sessions[session.id] = session;
 
     fn({
       lastKnownTime: sessions[users[userId].sessionId].lastKnownTime,
-      lastKnownTimeUpdatedAt: sessions[users[userId].sessionId].lastKnownTimeUpdatedAt.getTime(),
-      messages: lodash.map(sessions[users[userId].sessionId].messages, function(message) { return {
-        body: message.body,
-        isSystemMessage: message.isSystemMessage,
-        timestamp: message.timestamp.getTime(),
-        userId: message.userId
-      }; }),
+      lastKnownTimeUpdatedAt: sessions[
+        users[userId].sessionId
+      ].lastKnownTimeUpdatedAt.getTime(),
+      messages: lodash.map(
+        sessions[users[userId].sessionId].messages,
+        function (message) {
+          return {
+            body: message.body,
+            isSystemMessage: message.isSystemMessage,
+            timestamp: message.timestamp.getTime(),
+            userId: message.userId,
+          };
+        }
+      ),
       sessionId: users[userId].sessionId,
-      state: sessions[users[userId].sessionId].state
+      state: sessions[users[userId].sessionId].state,
     });
     if (data.controlLock) {
-      sendMessage('created the session with exclusive control', true);
+      sendMessage("created the session with exclusive control", true);
     } else {
-      sendMessage('created the session', true);
+      sendMessage("created the session", true);
     }
-    console.log('User ' + userId + ' created session ' + users[userId].sessionId + ' with video ' + JSON.stringify(data.videoId) + ' and controlLock ' + JSON.stringify(data.controlLock) + '.');
+    console.log(
+      "User " +
+        userId +
+        " created session " +
+        users[userId].sessionId +
+        " with video " +
+        JSON.stringify(data.videoKeyId) +
+        " and controlLock " +
+        JSON.stringify(data.controlLock) +
+        "."
+    );
   });
 
-  socket.on('joinSession', function(sessionId, fn) {
+  socket.on("joinSession", function (sessionId, fn) {
     if (!users.hasOwnProperty(userId)) {
-      fn({ errorMessage: 'Disconnected.' });
-      console.log('The socket received a message after it was disconnected.');
+      fn({ errorMessage: "Disconnected." });
+      console.log("The socket received a message after it was disconnected.");
       return;
     }
 
     if (!validateId(sessionId) || !sessions.hasOwnProperty(sessionId)) {
-      fn({ errorMessage: 'Invalid session ID.' });
-      console.log('User ' + userId + ' attempted to join nonexistent session ' + JSON.stringify(sessionId) + '.');
+      fn({ errorMessage: "Invalid session ID." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to join nonexistent session " +
+          JSON.stringify(sessionId) +
+          "."
+      );
       return;
     }
 
     if (users[userId].sessionId !== null) {
-      fn({ errorMessage: 'Already in a session.' });
-      console.log('User ' + userId + ' attempted to join session ' + sessionId + ', but the user is already in session ' + users[userId].sessionId + '.');
+      fn({ errorMessage: "Already in a session." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to join session " +
+          sessionId +
+          ", but the user is already in session " +
+          users[userId].sessionId +
+          "."
+      );
       return;
     }
 
     users[userId].sessionId = sessionId;
     sessions[sessionId].userIds.push(userId);
-    sendMessage('joined', true);
+    sendMessage("joined", true);
 
     fn({
-      videoId: sessions[sessionId].videoId,
+      videoKeyId: sessions[sessionId].videoKeyId,
       lastKnownTime: sessions[sessionId].lastKnownTime,
-      lastKnownTimeUpdatedAt: sessions[sessionId].lastKnownTimeUpdatedAt.getTime(),
-      messages: lodash.map(sessions[sessionId].messages, function(message) { return {
-        body: message.body,
-        isSystemMessage: message.isSystemMessage,
-        timestamp: message.timestamp.getTime(),
-        userId: message.userId
-      }; }),
+      lastKnownTimeUpdatedAt: sessions[
+        sessionId
+      ].lastKnownTimeUpdatedAt.getTime(),
+      messages: lodash.map(sessions[sessionId].messages, function (message) {
+        return {
+          body: message.body,
+          isSystemMessage: message.isSystemMessage,
+          timestamp: message.timestamp.getTime(),
+          userId: message.userId,
+        };
+      }),
       ownerId: sessions[sessionId].ownerId,
-      state: sessions[sessionId].state
+      state: sessions[sessionId].state,
     });
-    console.log('User ' + userId + ' joined session ' + sessionId + '.');
+    console.log("User " + userId + " joined session " + sessionId + ".");
   });
 
-  socket.on('leaveSession', function(_, fn) {
+  socket.on("leaveSession", function (_, fn) {
     if (!users.hasOwnProperty(userId)) {
-      fn({ errorMessage: 'Disconnected.' });
-      console.log('The socket received a message after it was disconnected.');
+      fn({ errorMessage: "Disconnected." });
+      console.log("The socket received a message after it was disconnected.");
       return;
     }
 
     if (users[userId].sessionId === null) {
-      fn({ errorMessage: 'Not in a session.' });
-      console.log('User ' + userId + ' attempted to leave a session, but the user was not in one.');
+      fn({ errorMessage: "Not in a session." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to leave a session, but the user was not in one."
+      );
       return;
     }
 
@@ -461,59 +619,99 @@ io.on('connection', function(socket) {
     leaveSession(true);
 
     fn(null);
-    console.log('User ' + userId + ' left session ' + sessionId + '.');
+    console.log("User " + userId + " left session " + sessionId + ".");
   });
 
-  socket.on('updateSession', function(data, fn) {
+  socket.on("updateSession", function (data, fn) {
     if (!users.hasOwnProperty(userId)) {
-      fn({ errorMessage: 'Disconnected.' });
-      console.log('The socket received a message after it was disconnected.');
+      fn({ errorMessage: "Disconnected." });
+      console.log("The socket received a message after it was disconnected.");
       return;
     }
 
     if (users[userId].sessionId === null) {
-      fn({ errorMessage: 'Not in a session.' });
-      console.log('User ' + userId + ' attempted to update a session, but the user was not in one.');
+      fn({ errorMessage: "Not in a session." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to update a session, but the user was not in one."
+      );
       return;
     }
 
     if (!validateLastKnownTime(data.lastKnownTime)) {
-      fn({ errorMessage: 'Invalid lastKnownTime.' });
-      console.log('User ' + userId + ' attempted to update session ' + users[userId].sessionId + ' with invalid lastKnownTime ' + JSON.stringify(data.lastKnownTime) + '.');
+      fn({ errorMessage: "Invalid lastKnownTime." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to update session " +
+          users[userId].sessionId +
+          " with invalid lastKnownTime " +
+          JSON.stringify(data.lastKnownTime) +
+          "."
+      );
       return;
     }
 
     if (!validateTimestamp(data.lastKnownTimeUpdatedAt)) {
-      fn({ errorMessage: 'Invalid lastKnownTimeUpdatedAt.' });
-      console.log('User ' + userId + ' attempted to update session ' + users[userId].sessionId + ' with invalid lastKnownTimeUpdatedAt ' + JSON.stringify(data.lastKnownTimeUpdatedAt) + '.');
+      fn({ errorMessage: "Invalid lastKnownTimeUpdatedAt." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to update session " +
+          users[userId].sessionId +
+          " with invalid lastKnownTimeUpdatedAt " +
+          JSON.stringify(data.lastKnownTimeUpdatedAt) +
+          "."
+      );
       return;
     }
 
     if (!validateState(data.state)) {
-      fn({ errorMessage: 'Invalid state.' });
-      console.log('User ' + userId + ' attempted to update session ' + users[userId].sessionId + ' with invalid state ' + JSON.stringify(data.state) + '.');
+      fn({ errorMessage: "Invalid state." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to update session " +
+          users[userId].sessionId +
+          " with invalid state " +
+          JSON.stringify(data.state) +
+          "."
+      );
       return;
     }
 
-    if (sessions[users[userId].sessionId].ownerId !== null && sessions[users[userId].sessionId].ownerId !== userId) {
-      fn({ errorMessage: 'Session locked.' });
-      console.log('User ' + userId + ' attempted to update session ' + users[userId].sessionId + ' but the session is locked by ' + sessions[users[userId].sessionId].ownerId + '.');
+    if (
+      sessions[users[userId].sessionId].ownerId !== null &&
+      sessions[users[userId].sessionId].ownerId !== userId
+    ) {
+      fn({ errorMessage: "Session locked." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to update session " +
+          users[userId].sessionId +
+          " but the session is locked by " +
+          sessions[users[userId].sessionId].ownerId +
+          "."
+      );
       return;
     }
 
-    var now = (new Date()).getTime();
-    var oldPredictedTime = sessions[users[userId].sessionId].lastKnownTime +
-      (sessions[users[userId].sessionId].state === 'paused' ? 0 : (
-        now - sessions[users[userId].sessionId].lastKnownTimeUpdatedAt.getTime()
-      ));
-    var newPredictedTime = data.lastKnownTime +
-      (data.state === 'paused' ? 0 : (
-        now - data.lastKnownTimeUpdatedAt
-      ));
+    var now = new Date().getTime();
+    var oldPredictedTime =
+      sessions[users[userId].sessionId].lastKnownTime +
+      (sessions[users[userId].sessionId].state === "paused"
+        ? 0
+        : now -
+          sessions[users[userId].sessionId].lastKnownTimeUpdatedAt.getTime());
+    var newPredictedTime =
+      data.lastKnownTime +
+      (data.state === "paused" ? 0 : now - data.lastKnownTimeUpdatedAt);
 
     var stateUpdated = sessions[users[userId].sessionId].state !== data.state;
     var timeUpdated = Math.abs(newPredictedTime - oldPredictedTime) > 2500;
-
+    console.log("timeUpdated", timeUpdated);
     var hours = Math.floor(newPredictedTime / (1000 * 60 * 60));
     newPredictedTime -= hours * 1000 * 60 * 60;
     var minutes = Math.floor(newPredictedTime / (1000 * 60));
@@ -523,62 +721,93 @@ io.on('connection', function(socket) {
 
     var timeStr;
     if (hours > 0) {
-      timeStr = String(hours) + ':' + String(minutes) + ':' + padIntegerWithZeros(seconds, 2);
+      timeStr =
+        String(hours) +
+        ":" +
+        String(minutes) +
+        ":" +
+        padIntegerWithZeros(seconds, 2);
     } else {
-      timeStr = String(minutes) + ':' + padIntegerWithZeros(seconds, 2);
+      timeStr = String(minutes) + ":" + padIntegerWithZeros(seconds, 2);
     }
 
     sessions[users[userId].sessionId].lastKnownTime = data.lastKnownTime;
-    sessions[users[userId].sessionId].lastKnownTimeUpdatedAt = new Date(data.lastKnownTimeUpdatedAt);
+    sessions[users[userId].sessionId].lastKnownTimeUpdatedAt = new Date(
+      data.lastKnownTimeUpdatedAt
+    );
     sessions[users[userId].sessionId].state = data.state;
 
     if (stateUpdated && timeUpdated) {
-      if (data.state === 'playing') {
-        sendMessage('started playing the video at ' + timeStr, true);
+      if (data.state === "playing") {
+        sendMessage("started playing the video at " + timeStr, true);
       } else {
-        sendMessage('paused the video at ' + timeStr, true);
+        sendMessage("paused the video at " + timeStr, true);
       }
     } else if (stateUpdated) {
-      if (data.state === 'playing') {
-        sendMessage('started playing the video', true);
+      if (data.state === "playing") {
+        sendMessage("started playing the video", true);
       } else {
-        sendMessage('paused the video', true);
+        sendMessage("paused the video", true);
       }
     } else if (timeUpdated) {
-      sendMessage('jumped to ' + timeStr, true);
+      sendMessage("jumped to " + timeStr, true);
     }
 
     fn();
-    console.log('User ' + userId + ' updated session ' + users[userId].sessionId + ' with time ' + JSON.stringify(data.lastKnownTime) + ' and state ' + data.state + ' for epoch ' + JSON.stringify(data.lastKnownTimeUpdatedAt) + '.');
+    console.log(
+      "User " +
+        userId +
+        " updated session " +
+        users[userId].sessionId +
+        " with time " +
+        JSON.stringify(data.lastKnownTime) +
+        " and state " +
+        data.state +
+        " for epoch " +
+        JSON.stringify(data.lastKnownTimeUpdatedAt) +
+        "."
+    );
 
-    lodash.forEach(sessions[users[userId].sessionId].userIds, function(id) {
+    lodash.forEach(sessions[users[userId].sessionId].userIds, function (id) {
       if (id !== userId) {
-        console.log('Sending update to user ' + id + '.');
-        users[id].socket.emit('update', {
+        console.log("Sending update to user " + id + ".");
+        users[id].socket.emit("update", {
           lastKnownTime: sessions[users[userId].sessionId].lastKnownTime,
-          lastKnownTimeUpdatedAt: sessions[users[userId].sessionId].lastKnownTimeUpdatedAt.getTime(),
-          state: sessions[users[userId].sessionId].state
+          lastKnownTimeUpdatedAt: sessions[
+            users[userId].sessionId
+          ].lastKnownTimeUpdatedAt.getTime(),
+          state: sessions[users[userId].sessionId].state,
         });
       }
     });
   });
 
-  socket.on('typing', function(data, fn) {
+  socket.on("typing", function (data, fn) {
     if (!users.hasOwnProperty(userId)) {
-      fn({ errorMessage: 'Disconnected.' });
-      console.log('The socket received a message after it was disconnected.');
+      fn({ errorMessage: "Disconnected." });
+      console.log("The socket received a message after it was disconnected.");
       return;
     }
 
     if (users[userId].sessionId === null) {
-      fn({ errorMessage: 'Not in a session.' });
-      console.log('User ' + userId + ' attempted to set presence, but the user was not in a session.');
+      fn({ errorMessage: "Not in a session." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to set presence, but the user was not in a session."
+      );
       return;
     }
 
     if (!validateBoolean(data.typing)) {
-      fn({ errorMessage: 'Invalid typing.' });
-      console.log('User ' + userId + ' attempted to set invalid presence ' + JSON.stringify(data.typing) + '.');
+      fn({ errorMessage: "Invalid typing." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to set invalid presence " +
+          JSON.stringify(data.typing) +
+          "."
+      );
       return;
     }
 
@@ -586,57 +815,73 @@ io.on('connection', function(socket) {
 
     fn();
     if (users[userId].typing) {
-      console.log('User ' + userId + ' is typing...');
+      console.log("User " + userId + " is typing...");
     } else {
-      console.log('User ' + userId + ' is done typing.');
+      console.log("User " + userId + " is done typing.");
     }
 
     broadcastPresence(users[userId].sessionId, userId);
   });
 
-  socket.on('sendMessage', function(data, fn) {
+  socket.on("sendMessage", function (data, fn) {
     if (!users.hasOwnProperty(userId)) {
-      fn({ errorMessage: 'Disconnected.' });
-      console.log('The socket received a message after it was disconnected.');
+      fn({ errorMessage: "Disconnected." });
+      console.log("The socket received a message after it was disconnected.");
       return;
     }
 
     if (users[userId].sessionId === null) {
-      fn({ errorMessage: 'Not in a session.' });
-      console.log('User ' + userId + ' attempted to send a message, but the user was not in a session.');
+      fn({ errorMessage: "Not in a session." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to send a message, but the user was not in a session."
+      );
       return;
     }
 
     if (!validateMessageBody(data.body)) {
-      fn({ errorMessage: 'Invalid message body.' });
-      console.log('User ' + userId + ' attempted to send an invalid message ' + JSON.stringify(data.body) + '.');
+      fn({ errorMessage: "Invalid message body." });
+      console.log(
+        "User " +
+          userId +
+          " attempted to send an invalid message " +
+          JSON.stringify(data.body) +
+          "."
+      );
       return;
     }
 
     sendMessage(data.body, false);
 
     fn();
-    console.log('User ' + userId + ' sent message ' + data.body + '.');
+    console.log("User " + userId + " sent message " + data.body + ".");
   });
 
-  socket.on('getServerTime', function(data, fn) {
+  socket.on("getServerTime", function (data, fn) {
     if (!users.hasOwnProperty(userId)) {
-      fn({ errorMessage: 'Disconnected.' });
-      console.log('The socket received a message after it was disconnected.');
+      fn({ errorMessage: "Disconnected." });
+      console.log("The socket received a message after it was disconnected.");
       return;
     }
 
-    fn((new Date()).getTime());
-    if (typeof data === 'object' && data !== null && typeof data.version === 'string') {
-      console.log('User ' + userId + ' pinged with version ' + data.version + '.');
+    fn(new Date().getTime());
+    if (
+      typeof data === "object" &&
+      data !== null &&
+      typeof data.version === "string"
+    ) {
+      console.log(
+        "User " + userId + " pinged with version " + data.version + "."
+      );
     } else {
-      console.log('User ' + userId + ' pinged.');
+      console.log("User " + userId + " pinged.");
     }
   });
 
-  socket.on('disconnect', function() {
+  socket.on("disconnect", function () {
     if (!users.hasOwnProperty(userId)) {
-      console.log('The socket received a message after it was disconnected.');
+      console.log("The socket received a message after it was disconnected.");
       return;
     }
 
@@ -644,10 +889,10 @@ io.on('connection', function(socket) {
       leaveSession(true);
     }
     delete users[userId];
-    console.log('User ' + userId + ' disconnected.');
+    console.log("User " + userId + " disconnected.");
   });
 });
 
-var server = http.listen(process.env.PORT || 3000, function() {
-  console.log('Listening on port %d.', server.address().port);
+var server = http.listen(process.env.PORT || 3000, function () {
+  console.log("Listening on port %d.", server.address().port);
 });
